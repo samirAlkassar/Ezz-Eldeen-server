@@ -53,7 +53,6 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-app.options("*", cors());
 
 // Routes with file upload
 app.post("/auth/register", upload.single("images"), register);
