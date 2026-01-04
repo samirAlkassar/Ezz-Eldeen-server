@@ -44,10 +44,16 @@ app.use("/assets", express.static(path.join(__dirname, "public/assets")));
 // CORS
 app.use(
   cors({
-    origin: ["http://localhost:3000", "https://ezz-eldeen-eeybhpiqn-samiralkassars-projects.vercel.app/"],
+    origin: [
+      "http://localhost:3000",
+      "https://ezz-eldeen-eeybhpiqn-samiralkassars-projects.vercel.app",
+    ],
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+app.options("*", cors());
 
 // Routes with file upload
 app.post("/auth/register", upload.single("images"), register);
