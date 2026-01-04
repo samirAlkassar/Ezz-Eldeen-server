@@ -44,7 +44,7 @@ app.use("/assets", express.static(path.join(__dirname, "public/assets")));
 // CORS
 app.use(
   cors({
-    origin: ["http://localhost:3000", "https://mawja.vercel.app"],
+    origin: ["http://localhost:3000", "https://ezz-eldeen-eeybhpiqn-samiralkassars-projects.vercel.app/"],
     credentials: true,
   })
 );
