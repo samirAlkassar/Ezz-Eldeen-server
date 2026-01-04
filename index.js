@@ -16,7 +16,7 @@ import { createProduct } from "./controllers/products.js";
 import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/user.js";
 import productsRoutes from "./routes/products.js";
-import cartRoutes from "./routes/Cart.js";
+import cartRoutes from "./routes/cart.js";
 import orderRoutes from "./routes/order.js";
 import wishlistRoutes from "./routes/wishlist.js";
 import {updateProfilePicture} from "./controllers/user.js"
