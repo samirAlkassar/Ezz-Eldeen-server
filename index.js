@@ -46,7 +46,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:3000",
-      "https://ezz-eldeen.vercel.app/",
+      "https://ezz-eldeen.vercel.app",
       "https://ezz-eldeen-eeybhpiqn-samiralkassars-projects.vercel.app",
     ],
     credentials: true,
