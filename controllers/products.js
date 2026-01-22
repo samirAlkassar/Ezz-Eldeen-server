@@ -67,6 +67,7 @@ export const getProducts = async (req, res) => {
       page = 1,
       limit = 12,
       category,
+      subcategory,
       minPrice,
       maxPrice,
       sort = "createdAt",
@@ -80,6 +81,7 @@ export const getProducts = async (req, res) => {
 
     // CATEGORY
     if (category) filter.category = category;
+    if (subcategory) filter.subcategory = subcategory;
 
     // PRICE FILTER
     if (minPrice || maxPrice) {

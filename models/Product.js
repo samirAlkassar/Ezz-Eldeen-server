@@ -71,7 +71,7 @@ const ProductSchema = new mongoose.Schema(
       required: true,
     },
     subcategory: String,
-    tags: [String],
+      tags: [String],
 
     // Variants (optional: color, size, storage, etc)
     variants: [
