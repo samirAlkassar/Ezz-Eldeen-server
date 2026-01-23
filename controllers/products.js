@@ -124,7 +124,7 @@ export const getProducts = async (req, res) => {
     } else if (sort === "price-desc") {
       sortOptions.price = -1;
     } else if (sort === "rating") {
-      sortOptions.rating = -1;
+      sortOptions.averageRating = -1;
     } else if (sort === "newest") {
       sortOptions.createdAt = -1;
     } else {
