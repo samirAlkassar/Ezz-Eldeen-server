@@ -73,6 +73,8 @@ export const getProducts = async (req, res) => {
       sort = "createdAt",
       order = "desc",
       search,
+      minRating,
+      maxRating
     } = req.query;
 
     const skip = (page - 1) * limit;
@@ -89,6 +91,12 @@ export const getProducts = async (req, res) => {
       if (minPrice) filter.price.$gte = Number(minPrice);
       if (maxPrice) filter.price.$lte = Number(maxPrice);
     }
+
+  if (minRating || maxRating) {
+    filter.rating = {};
+    if (minRating) filter.rating.$gte = Number(minRating);
+    if (maxRating) filter.rating.$lte = Number(maxRating);
+  }
 
     // SEARCH FILTER
     if (search) {
@@ -115,10 +123,11 @@ export const getProducts = async (req, res) => {
       sortOptions.price = 1;
     } else if (sort === "price-desc") {
       sortOptions.price = -1;
+    } else if (sort === "rating") {
+      sortOptions.rating = -1;
     } else if (sort === "newest") {
       sortOptions.createdAt = -1;
     } else {
-      // Generic sort field (ex: sort=name&order=asc)
       sortOptions[sort] = order === "asc" ? 1 : -1;
     }
 

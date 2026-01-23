@@ -123,6 +123,8 @@ ProductSchema.index({
 });
 
 ProductSchema.index({ category: 1 });
+ProductSchema.index({ rating: -1 });
+ProductSchema.index({ category: 1, rating: -1 });
 ProductSchema.index({ subcategory: 1 });
 ProductSchema.index({ tags: 1 });
 ProductSchema.index({ slug: 1 });
