@@ -31,7 +31,7 @@ router.patch("/:id", verifyToken, updateProduct);
 router.delete("/:id", verifyToken, deleteProduct);
 
 // GET REVIEWS
-router.get("/reviews/:id", verifyToken, getReviews);
+router.get("/reviews/:id", getReviews);
 
 // ADD REVIEW
 router.post("/:id/review", verifyToken, addReview);
