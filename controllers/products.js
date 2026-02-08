@@ -224,6 +224,36 @@ export const deleteProduct = async (req, res) => {
 };
 
 // ======================
+// GET REVIEW
+// ======================
+export const getReviews = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const product = await Product.findById(id)
+      .select("reviews averageRating totalReviews")
+      .populate({
+        path: "reviews.user",
+        select: "firstName lastName picturePath",
+      });
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    res.status(200).json({
+      reviews: product.reviews,
+      averageRating: product.averageRating,
+      totalReviews: product.totalReviews,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+
+// ======================
 // ADD REVIEW
 // ======================
 export const addReview = async (req, res) => {

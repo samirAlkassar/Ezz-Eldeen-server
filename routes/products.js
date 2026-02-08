@@ -6,7 +6,8 @@ import {
   updateProduct,
   deleteProduct,
   addReview,
-  getRelatedProducts
+  getRelatedProducts,
+  getReviews
 } from "../controllers/products.js";
 
 import { verifyToken } from "../middleware/auth.js";
@@ -28,6 +29,9 @@ router.patch("/:id", verifyToken, updateProduct);
 
 // DELETE
 router.delete("/:id", verifyToken, deleteProduct);
+
+// GET REVIEWS
+router.get("/reviews/:id", verifyToken, getReviews);
 
 // ADD REVIEW
 router.post("/:id/review", verifyToken, addReview);
