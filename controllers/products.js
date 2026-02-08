@@ -166,7 +166,13 @@ export const getProductBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
 
-    const product = await Product.findOne({ slug }).populate("seller");
+  const product = await Product.findOne({ slug })
+    .populate("seller")
+    .populate({
+      path: "reviews.user",
+      select: "firstName lastName picturePath",
+    });
+
     if (!product)
       return res.status(404).json({ message: "Product not found" });
 
