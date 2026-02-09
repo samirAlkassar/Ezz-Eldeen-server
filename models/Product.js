@@ -18,14 +18,14 @@ const ReviewSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+const LocalizedString = {
+  ar: { type: String, required: true },
+  en: { type: String, required: true },
+};
+
 const ProductSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-      maxLength: 200,
-    },
+    name: LocalizedString,
 
     slug: {
       type: String,
@@ -36,98 +36,113 @@ const ProductSchema = new mongoose.Schema(
     },
 
     description: {
-      type: String,
-      required: true,
-      maxLength: 5000,
+      ar: { type: String, required: true, maxLength: 5000 },
+      en: { type: String, required: true, maxLength: 5000 },
     },
 
-    // Pricing
     price: {
       type: Number,
       required: true,
     },
+
     discountPrice: Number,
+
     currency: {
       type: String,
       default: "EGP",
     },
 
-    // Inventory
     stock: {
       type: Number,
       required: true,
       min: 0,
     },
-  sku: {
-    type: String,
-    unique: true,
-    required: true,
-  },
 
-
-    // Category & Tags
-    category: {
+    sku: {
       type: String,
+      unique: true,
       required: true,
     },
-    subcategory: String,
-      tags: [String],
 
-    // Variants (optional: color, size, storage, etc)
+    category: LocalizedString,
+    subcategory: {
+      ar: String,
+      en: String,
+    },
+
+    tags: {
+      ar: [String],
+      en: [String],
+    },
+
     variants: [
       {
-        name: String,          // e.g. "color"
-        value: String,         // e.g. "black"
+        name: String,
+        value: String,
       },
     ],
 
-    // Images
     images: [
       {
         url: { type: String, required: true },
-        alt: String,
+        alt: {
+          ar: String,
+          en: String,
+        },
       },
     ],
 
-    // Reviews
     reviews: [ReviewSchema],
+
     averageRating: {
       type: Number,
       default: 0,
       min: 0,
       max: 5,
     },
+
     totalReviews: {
       type: Number,
       default: 0,
     },
 
-    // Seller (if multi-vendor)
     seller: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
 
-    // Flags
     isFeatured: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
-
   },
   { timestamps: true }
 );
 
 ProductSchema.index({
-  name: "text",
-  description: "text",
-  category: "text"
+  "name.ar": "text",
+  "name.en": "text",
+  "description.ar": "text",
+  "description.en": "text",
+  "category.ar": "text",
+  "category.en": "text",
 });
 
-ProductSchema.index({ category: 1 });
-ProductSchema.index({ rating: -1 });
-ProductSchema.index({ category: 1, rating: -1 });
-ProductSchema.index({ subcategory: 1 });
-ProductSchema.index({ tags: 1 });
+
+
+ProductSchema.index({ averageRating: -1 });
+ProductSchema.index({ "category.ar": 1, averageRating: -1 });
+ProductSchema.index({ "category.en": 1, averageRating: -1 });
+
 ProductSchema.index({ slug: 1 });
+
+ProductSchema.index({ "category.ar": 1 });
+ProductSchema.index({ "category.en": 1 });
+
+ProductSchema.index({ "subcategory.ar": 1 });
+ProductSchema.index({ "subcategory.en": 1 });
+
+ProductSchema.index({ "tags.ar": 1 });
+ProductSchema.index({ "tags.en": 1 });
+
 
 const Product = mongoose.model("Product", ProductSchema);
 export default Product;

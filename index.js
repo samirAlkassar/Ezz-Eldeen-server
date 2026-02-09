@@ -20,6 +20,7 @@ import cartRoutes from "./routes/cart.js";
 import orderRoutes from "./routes/order.js";
 import wishlistRoutes from "./routes/wishlist.js";
 import {updateProfilePicture} from "./controllers/user.js"
+import { langMiddleware } from "./middleware/lang.middleware.js";
 
 // Configuration
 const __filename = fileURLToPath(import.meta.url);
@@ -74,6 +75,8 @@ app.put(
   upload.single("image"),   // <--- IMPORTANT
   updateProfilePicture
 );
+
+app.use(langMiddleware);
 
 
 // Mongoose Setup
