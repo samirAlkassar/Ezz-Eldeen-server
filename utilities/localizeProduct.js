@@ -1,17 +1,25 @@
-export const localizeProduct = (product, lang) => ({
-  id: product._id,
-  name: product.name[lang],
-  description: product.description[lang],
-  price: product.price,
-  discountPrice: product.discountPrice,
-  currency: product.currency,
-  stock: product.stock,
-  category: product.category[lang],
-  subcategory: product.subcategory?.[lang],
-  tags: product.tags?.[lang] || [],
-  images: product.images.map(img => ({
-    url: img.url,
-    alt: img.alt?.[lang],
-  })),
-  rating: product.averageRating,
-});
+export const localizeProduct = (product, lang) => {
+  return {
+    _id: product._id,
+    slug: product.slug,
+    sku: product.sku,
+
+    name: product.name?.[lang],
+    description: product.description?.[lang],
+
+    price: product.price,
+    discountPrice: product.discountPrice,
+    stock: product.stock,
+
+    images: product.images,
+
+    category: product.category?.[lang],
+    subcategory: product.subcategory?.[lang],
+    tags: product.tags?.[lang],
+
+    averageRating: product.averageRating,
+    totalReviews: product.totalReviews,
+
+    createdAt: product.createdAt,
+  };
+};

@@ -1,5 +1,6 @@
 import Wishlist from "../models/Wishlist.js";
 import Product from "../models/Product.js";
+import { localizeProduct } from "../utilities/localizeProduct.js";
 
 // ======================
 // Get wishlist for user
@@ -7,14 +8,18 @@ import Product from "../models/Product.js";
 export const getWishlist = async (req, res) => {
   try {
     const userId = req.user.id;
+    const lang = req.lang;
 
     const wishlist = await Wishlist.findOne({ user: userId }).populate("items");
 
     if (!wishlist) {
       return res.status(200).json({ items: [] });
     }
-
-    res.status(200).json(wishlist);
+    
+    const localizedWishlist = wishlist.items.map(product=>
+      localizeProduct(product, lang)
+    )
+    res.status(200).json({...wishlist.toObject(), items: localizedWishlist});
   } catch (error) {
     res.status(500).json({ message: "Error getting wishlist", error });
   }

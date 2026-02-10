@@ -1,16 +1,25 @@
 import Cart from "../models/Cart.js";
 import Product from "../models/Product.js";
+import { localizeProduct } from "../utilities/localizeProduct.js";
 
 // Get user cart
 export const getCart = async (req, res) => {
   try {
+    const lang = req.lang;
     let cart = await Cart.findOne({ user: req.user.id }).populate("items.product");
 
     if (!cart) {
       cart = await Cart.create({ user: req.user.id, items: [] });
     }
 
-    res.status(200).json(cart);
+    const localizedItems = cart.items.map(item => ({
+      ...item.toObject(),
+      product: item.product
+        ? localizeProduct(item.product, lang)
+        : null,
+    }));
+
+    res.status(200).json({...cart.toObject(),items: localizedItems,});
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

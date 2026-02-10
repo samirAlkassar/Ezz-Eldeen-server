@@ -22,7 +22,6 @@ import wishlistRoutes from "./routes/wishlist.js";
 import {updateProfilePicture} from "./controllers/user.js"
 import { langMiddleware } from "./middleware/lang.middleware.js";
 
-// Configuration
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -39,7 +38,6 @@ app.use(morgan("common"));
 app.use(bodyParser.json({ limit: "30mb", extended: true }));
 app.use(bodyParser.urlencoded({ limit: "30mb", extended: true }));
 
-// Static Assets
 app.use("/assets", express.static(path.join(__dirname, "public/assets")));
 
 // CORS
@@ -56,13 +54,11 @@ app.use(
   })
 );
 
-// Routes with file upload
+app.use(langMiddleware);
 app.post("/auth/register", upload.single("images"), register);
 
-// Recommended: move to productsRoutes instead
 app.post("/products", verifyToken, upload.array("images", 5), createProduct);
 
-// Main Routes
 app.use("/auth", authRoutes);
 app.use("/user", userRoutes);
 app.use("/products", productsRoutes);
@@ -72,14 +68,11 @@ app.use("/wishlist", wishlistRoutes);
 app.put(
   "/user/profile-picture",
   verifyToken,
-  upload.single("image"),   // <--- IMPORTANT
+  upload.single("image"),
   updateProfilePicture
 );
 
-app.use(langMiddleware);
 
-
-// Mongoose Setup
 const PORT = process.env.PORT || 6001;
 mongoose
   .connect(process.env.MONGO_URL, {

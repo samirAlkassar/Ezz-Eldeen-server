@@ -1,42 +1,34 @@
 import Product from "../models/Product.js";
 import cloudinary from "../utilities/cloudinary.js";
-import {localizeProduct} from "../utilities/localizeProduct.js"
-import Cart from "../models/Cart.js";
-import Wishlist from "../models/Wishlist.js";
-import { recalculateCart } from "../utilities/recalculateCart.js";
+
 // ======================
 // CREATE PRODUCT (Admin)
 // ======================
-
 export const createProduct = async (req, res) => {
   try {
-    const parseIfString = (v) =>
-      typeof v === "string" ? JSON.parse(v) : v;
-
-    const name = parseIfString(req.body.name);
-    const description = parseIfString(req.body.description);
-    const category = parseIfString(req.body.category);
-    const subcategory = parseIfString(req.body.subcategory);
-    const tags = parseIfString(req.body.tags);
-    const variants = parseIfString(req.body.variants) || [];
-
-    const { slug, price, discountPrice, stock } = req.body;
-
-    if (!name?.ar || !name?.en) {
-      return res.status(400).json({ message: "Name must have ar & en" });
-    }
-
+    const {
+      name,
+      slug,
+      description,
+      price,
+      discountPrice,
+      stock,
+      category,
+      subcategory,
+      tags,
+      variants,
+    } = req.body;
     const sku = req.body.sku || "SKU-" + Date.now().toString().slice(-6);
-
+    // Handle image upload (multiple images)
     let images = [];
-    if (req.files?.length) {
+    if (req.files && req.files.length > 0) {
       for (let file of req.files) {
         const result = await cloudinary.uploader.upload(file.path, {
           folder: "products",
         });
         images.push({
           url: result.secure_url,
-          alt: name.en || name.ar,
+          alt: name,
         });
       }
     }
@@ -57,15 +49,13 @@ export const createProduct = async (req, res) => {
     });
 
     await newProduct.save();
-    res.status(201).json(newProduct);
 
+    res.status(201).json(newProduct);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: error.message || "Error creating product" });
+    console.log("Create Product Error:", error);
+    res.status(500).json({ message: "Error creating product" });
   }
 };
-
-
 
 // ======================
 // GET ALL PRODUCTS
@@ -73,8 +63,6 @@ export const createProduct = async (req, res) => {
 // ======================
 export const getProducts = async (req, res) => {
   try {
-    const lang = req.lang;
-
     const {
       page = 1,
       limit = 12,
@@ -82,48 +70,55 @@ export const getProducts = async (req, res) => {
       subcategory,
       minPrice,
       maxPrice,
-      sort = "newest",
+      sort = "createdAt",
+      order = "desc",
       search,
       minRating,
-      maxRating,
+      maxRating
     } = req.query;
 
     const skip = (page - 1) * limit;
+
     let filter = {};
 
-    // CATEGORY (localized)
-    if (category) filter[`category.${lang}`] = category;
-    if (subcategory) filter[`subcategory.${lang}`] = subcategory;
+    // CATEGORY
+    if (category) filter.category = category;
+    if (subcategory) filter.subcategory = subcategory;
 
-    // PRICE
+    // PRICE FILTER
     if (minPrice || maxPrice) {
       filter.price = {};
       if (minPrice) filter.price.$gte = Number(minPrice);
       if (maxPrice) filter.price.$lte = Number(maxPrice);
     }
 
-    // RATING
-    if (minRating || maxRating) {
-      filter.averageRating = {};
-      if (minRating) filter.averageRating.$gte = Number(minRating);
-      if (maxRating) filter.averageRating.$lte = Number(maxRating);
-    }
+  if (minRating || maxRating) {
+    filter.rating = {};
+    if (minRating) filter.rating.$gte = Number(minRating);
+    if (maxRating) filter.rating.$lte = Number(maxRating);
+  }
 
-    // SEARCH (language-aware)
+    // SEARCH FILTER
     if (search) {
       const regex = new RegExp(search, "i");
       filter.$or = [
-        { [`name.${lang}`]: regex },
-        { [`description.${lang}`]: regex },
-        { [`category.${lang}`]: regex },
-        { [`subcategory.${lang}`]: { $regex: regex } },
+        { name: { $regex: regex } },
         { slug: { $regex: regex } },
+        { description: { $regex: regex } },
+        { category: { $regex: regex } },
+        { subcategory: { $regex: regex } },
+        { tags: { $in: [regex] } }
       ];
     }
 
+    // BASE QUERY
     let productsQuery = Product.find(filter);
-    // SORT
+
+    // =============================
+    // SORTING LOGIC (Improved)
+    // =============================
     const sortOptions = {};
+
     if (sort === "price-asc") {
       sortOptions.price = 1;
     } else if (sort === "price-desc") {
@@ -135,8 +130,12 @@ export const getProducts = async (req, res) => {
     } else {
       sortOptions[sort] = order === "asc" ? 1 : -1;
     }
+
     productsQuery = productsQuery.sort(sortOptions);
 
+    // =============================
+    // PAGINATION
+    // =============================
     const products = await productsQuery
       .skip(skip)
       .limit(Number(limit));
@@ -144,7 +143,7 @@ export const getProducts = async (req, res) => {
     const total = await Product.countDocuments(filter);
 
     res.status(200).json({
-      products: products.map(p => localizeProduct(p, lang)),
+      products,
       pagination: {
         page: Number(page),
         limit: Number(limit),
@@ -153,11 +152,11 @@ export const getProducts = async (req, res) => {
         hasMore: page * limit < total,
       },
     });
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
 
 
 // ======================
@@ -165,25 +164,23 @@ export const getProducts = async (req, res) => {
 // ======================
 export const getProductBySlug = async (req, res) => {
   try {
-    const lang = req.lang;
     const { slug } = req.params;
 
-    const product = await Product.findOne({ slug, isActive: true })
-      .populate("seller")
-      .populate({
-        path: "reviews.user",
-        select: "firstName lastName picturePath",
-      });
+  const product = await Product.findOne({ slug })
+    .populate("seller")
+    .populate({
+      path: "reviews.user",
+      select: "firstName lastName picturePath",
+    });
 
     if (!product)
       return res.status(404).json({ message: "Product not found" });
 
-    res.status(200).json(localizeProduct(product, lang));
+    res.status(200).json(product);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
 
 // ======================
 // UPDATE PRODUCT (Admin)
@@ -210,59 +207,21 @@ export const updateProduct = async (req, res) => {
 // ======================
 // DELETE PRODUCT (Admin)
 // ======================
-
-
-
 export const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
 
     const product = await Product.findById(id);
-    if (!product) {
+    if (!product)
       return res.status(404).json({ message: "Product not found" });
-    }
-
-    // Remove from wishlists
-    await Wishlist.updateMany(
-      { items: id },
-      { $pull: { items: id } }
-    );
-
-    // Remove from carts
-    await Cart.updateMany(
-      { "items.product": id },
-      { $pull: { items: { product: id } } }
-    );
-
-    // 🔥 Recalculate affected carts
-    const carts = await Cart.find({});
-
-    for (const cart of carts) {
-      cart.totalQuantity = cart.items.reduce(
-        (sum, item) => sum + item.quantity,
-        0
-      );
-
-      cart.totalPrice = cart.items.reduce(
-        (sum, item) => sum + item.quantity * item.priceAtTime,
-        0
-      );
-
-      await cart.save();
-    }
 
     await Product.findByIdAndDelete(id);
 
-    res.status(200).json({
-      message: "Product deleted and carts & wishlists synced",
-    });
+    res.status(200).json({ message: "Product deleted" });
   } catch (error) {
-    console.error("Delete product error:", error);
     res.status(500).json({ message: error.message });
   }
 };
-
-
 
 // ======================
 // GET REVIEW
@@ -335,43 +294,48 @@ export const addReview = async (req, res) => {
 // ======================
 export const getRelatedProducts = async (req, res) => {
   try {
-    const lang = req.lang;
     const { slug } = req.query;
     const limit = Number(req.query.limit) || 6;
 
+    // 1. Get current product
     const product = await Product.findOne({ slug });
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
 
+    // 2. Build similarity filter
     const filter = {
-      _id: { $ne: product._id },
-      [`category.${lang}`]: product.category[lang],
+      _id: { $ne: product._id }, // exclude current product
+      category: product.category,
     };
 
-    if (product.subcategory?.[lang]) {
-      filter[`subcategory.${lang}`] = product.subcategory[lang];
+    // Optional: subcategory
+    if (product.subcategory) {
+      filter.subcategory = product.subcategory;
     }
 
-    if (product.tags?.[lang]?.length > 0) {
+    // Optional: tags boost relevance
+    if (product.tags && product.tags.length > 0) {
       filter.$or = [
-        { [`tags.${lang}`]: { $in: product.tags[lang] } },
-        { [`subcategory.${lang}`]: product.subcategory?.[lang] },
+        { tags: { $in: product.tags } },
+        { subcategory: product.subcategory },
       ];
     }
-
+    console.log("PRODUCT:", {
+  category: product.category,
+  subcategory: product.subcategory,
+  tags: product.tags,
+});
+    // 3. Query related products
     const relatedProducts = await Product.find(filter)
-      .limit(limit);
+      .limit(limit)
+      .select("name slug price discountPrice images averageRating category");
 
     res.status(200).json({
-      products: relatedProducts.map(p =>
-        localizeProduct(p, lang)
-      ),
+      products: relatedProducts,
     });
-
   } catch (error) {
     console.error("Related Products Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
-
