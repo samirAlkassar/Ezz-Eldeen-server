@@ -11,11 +11,12 @@ import {
 } from "../controllers/products.js";
 
 import { verifyToken } from "../middleware/auth.js";
+import upload from "../middleware/multer.js";
 
 const router = express.Router();
 
 // CREATE
-router.post("/", verifyToken, createProduct);
+router.post("/", verifyToken("admin"), createProduct);
 
 // READ
 router.get("/", getProducts);
@@ -25,15 +26,15 @@ router.get("/related", getRelatedProducts);
 router.get("/:slug", getProductBySlug);
 
 // UPDATE
-router.patch("/:id", verifyToken, updateProduct);
+router.patch("/:id", verifyToken("admin"), upload.array("images", 5), updateProduct);
 
 // DELETE
-router.delete("/:id", verifyToken, deleteProduct);
+router.delete("/:id", verifyToken("admin"), deleteProduct);
 
 // GET REVIEWS
 router.get("/reviews/:id", getReviews);
 
 // ADD REVIEW
-router.post("/:id/review", verifyToken, addReview);
+router.post("/:id/review", verifyToken(), addReview);
 
 export default router;

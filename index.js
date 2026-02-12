@@ -11,7 +11,7 @@ import { fileURLToPath } from "url";
 import { register } from "./controllers/auth.js";
 import upload from "./middleware/multer.js";
 import { verifyToken } from "./middleware/auth.js";
-import { createProduct } from "./controllers/products.js";
+import { createProduct, updateProduct } from "./controllers/products.js";
 
 import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/user.js";
@@ -57,7 +57,8 @@ app.use(
 app.use(langMiddleware);
 app.post("/auth/register", upload.single("images"), register);
 
-app.post("/products", verifyToken, upload.array("images", 5), createProduct);
+app.post("/products", verifyToken("admin"), upload.array("images", 5), createProduct);
+
 
 app.use("/auth", authRoutes);
 app.use("/user", userRoutes);
@@ -67,7 +68,7 @@ app.use("/orders", orderRoutes);
 app.use("/wishlist", wishlistRoutes);
 app.put(
   "/user/profile-picture",
-  verifyToken,
+  verifyToken(),
   upload.single("image"),
   updateProfilePicture
 );
