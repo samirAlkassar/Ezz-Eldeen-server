@@ -87,7 +87,7 @@ export const login = async (req, res) => {
     const userToSend = user.toObject();
     delete userToSend.password;
 
-    res.status(200).json({ token, user: userToSend });
+    res.status(200).json({ token, user: userToSend, message: "Login successful" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
