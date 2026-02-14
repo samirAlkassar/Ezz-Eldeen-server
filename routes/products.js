@@ -7,7 +7,8 @@ import {
   deleteProduct,
   addReview,
   getRelatedProducts,
-  getReviews
+  getReviews,
+  getProductsAdmin
 } from "../controllers/products.js";
 
 import { verifyToken } from "../middleware/auth.js";
@@ -20,6 +21,7 @@ router.post("/", verifyToken("admin"), createProduct);
 
 // READ
 router.get("/", getProducts);
+router.get("/admin", verifyToken("admin"), getProductsAdmin);
 
 // GET RELATED PRODUCTS
 router.get("/related", getRelatedProducts);

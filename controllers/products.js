@@ -4,39 +4,52 @@ import {localizeProduct} from "../utilities/localizeProduct.js"
 import Cart from "../models/Cart.js";
 import Wishlist from "../models/Wishlist.js";
 import { recalculateCart } from "../utilities/recalculateCart.js";
-// ======================
-// CREATE PRODUCT (Admin)
-// ======================
 
+
+// CREATE PRODUCT (Admin)
 export const createProduct = async (req, res) => {
   try {
-    const parseIfString = (v) =>
-      typeof v === "string" ? JSON.parse(v) : v;
+    const { slug, price, discountPrice, stock, variants, sku } = req.body;
 
-    const name = parseIfString(req.body.name);
-    const description = parseIfString(req.body.description);
-    const category = parseIfString(req.body.category);
-    const subcategory = parseIfString(req.body.subcategory);
-    const tags = parseIfString(req.body.tags);
-    const variants = parseIfString(req.body.variants) || [];
+    const parseJSONField = (field) => {
+      if (!field) return undefined;
+      try {
+        return JSON.parse(field);
+      } catch (err) {
+        console.error("Failed to parse field:", field);
+        return undefined;
+      }
+    };
 
-    const { slug, price, discountPrice, stock } = req.body;
+    const name = parseJSONField(req.body.name);
+    const description = parseJSONField(req.body.description);
+    const category = parseJSONField(req.body.category);
+    const subcategory = parseJSONField(req.body.subcategory);
+    const tags = parseJSONField(req.body.tags);
+
 
     if (!name?.ar || !name?.en) {
-      return res.status(400).json({ message: "Name must have ar & en" });
+      return res.status(400).json({ message: "Name must include ar & en" });
     }
-
-    const sku = req.body.sku || "SKU-" + Date.now().toString().slice(-6);
+    if (!description?.ar || !description?.en) {
+      return res.status(400).json({ message: "Description must include ar & en" });
+    }
+    if (!category?.ar || !category?.en) {
+      return res.status(400).json({ message: "Category must include ar & en" });
+    }
 
     let images = [];
     if (req.files?.length) {
-      for (let file of req.files) {
+      for (const file of req.files) {
         const result = await cloudinary.uploader.upload(file.path, {
           folder: "products",
         });
         images.push({
           url: result.secure_url,
-          alt: name.en || name.ar,
+          alt: {
+            ar: name.ar,
+            en: name.en
+          },
         });
       }
     }
@@ -45,32 +58,31 @@ export const createProduct = async (req, res) => {
       name,
       slug,
       description,
-      price,
-      discountPrice,
-      stock,
-      sku,
+      price: Number(price),
+      discountPrice: discountPrice ? Number(discountPrice) : undefined,
+      stock: Number(stock),
+      sku: sku || `SKU-${Date.now().toString().slice(-6)}`,
       category,
       subcategory,
       tags,
-      variants,
+      variants: variants ? parseJSONField(variants) : [],
       images,
     });
 
     await newProduct.save();
+
     res.status(201).json(newProduct);
 
   } catch (error) {
-    console.error(error);
+    console.error("Create product error:", error);
     res.status(500).json({ message: error.message || "Error creating product" });
   }
 };
 
 
 
-// ======================
 // GET ALL PRODUCTS
 // with pagination + filters
-// ======================
 export const getProducts = async (req, res) => {
   try {
     const lang = req.lang;
@@ -91,7 +103,7 @@ export const getProducts = async (req, res) => {
     const skip = (page - 1) * limit;
     let filter = {};
 
-    // CATEGORY (localized)
+    // CATEGORY
     if (category) filter[`category.${lang}`] = category;
     if (subcategory) filter[`subcategory.${lang}`] = subcategory;
 
@@ -109,7 +121,7 @@ export const getProducts = async (req, res) => {
       if (maxRating) filter.averageRating.$lte = Number(maxRating);
     }
 
-    // SEARCH (language-aware)
+    // SEARCH
     if (search) {
       const regex = new RegExp(search, "i");
       filter.$or = [
@@ -159,10 +171,7 @@ export const getProducts = async (req, res) => {
 };
 
 
-
-// ======================
 // GET ONE PRODUCT BY SLUG
-// ======================
 export const getProductBySlug = async (req, res) => {
   try {
     const lang = req.lang;
@@ -185,34 +194,195 @@ export const getProductBySlug = async (req, res) => {
 };
 
 
-// ======================
 // UPDATE PRODUCT (Admin)
-// ======================
+
 export const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
+    const product = await Product.findById(id);
+    console.log("update product body", req.body)
+    console.log("FILES:", req.files);
+    if (!product) return res.status(404).json({ message: "Product not found" });
 
-    const updatedProduct = await Product.findByIdAndUpdate(
-      id,
-      { $set: req.body },
-      { new: true }
-    );
+    // --------------------------
+    // 1️⃣ Update normal fields
+    // --------------------------
+    const allowedFields = [
+      "name",
+      "slug",
+      "description",
+      "price",
+      "discountPrice",
+      "stock",
+      "category",
+      "subcategory",
+      "tags",
+      "variants",
+      "isActive"
+    ];
 
-    if (!updatedProduct)
-      return res.status(404).json({ message: "Product not found" });
+    allowedFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        try {
+          product[field] = typeof req.body[field] === "string" ? JSON.parse(req.body[field]) : req.body[field];
+        } catch {
+          product[field] = req.body[field];
+        }
+      }
+    });
 
-    res.status(200).json(updatedProduct);
+    // --------------------------
+    // 2️⃣ Handle images
+    // --------------------------
+    // Get existing images (URLs) from frontend
+  let existingImages = [];
+  if (req.body.existingImages) {
+    const urls = Array.isArray(req.body.existingImages)
+      ? req.body.existingImages
+      : JSON.parse(req.body.existingImages);
+    existingImages = product.images.filter(img => urls.includes(img.url));
+  }
+
+
+    // --------------------------
+    // 3️⃣ Upload new images if any
+    // --------------------------
+// 3️⃣ Upload new images if any
+  const newFiles = Array.isArray(req.files) ? req.files : [];
+
+  for (const file of newFiles) {
+    const upload = await cloudinary.uploader.upload(file.path, {
+      folder: "products",
+    });
+
+    existingImages.push({
+      url: upload.secure_url,
+      publicId: upload.public_id,
+    });
+  }
+
+
+    // --------------------------
+    // 4️⃣ Delete removed images from Cloudinary
+    // --------------------------
+    const imagesToDelete = product.images.filter(img => !existingImages.find(e => e.url === img.url));
+    for (const img of imagesToDelete) {
+      if (img.publicId) await cloudinary.uploader.destroy(img.publicId);
+    }
+
+    // Set final images
+    product.images = existingImages;
+
+    await product.save();
+
+    // --------------------------
+    // 5️⃣ Recalculate cart if needed
+    // --------------------------
+    if (req.body.price !== undefined || req.body.discountPrice !== undefined) {
+      await recalculateCart(id);
+    }
+
+    res.status(200).json(product);
+
+  } catch (error) {
+    console.error("Update product error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+
+// GET PRODUCTS FOR ADMIN
+export const getProductsAdmin = async (req, res) => {
+    try {
+    const lang = req.lang;
+
+    const {
+      page = 1,
+      limit = 12,
+      category,
+      subcategory,
+      minPrice,
+      maxPrice,
+      sort = "newest",
+      search,
+      minRating,
+      maxRating,
+    } = req.query;
+
+    const skip = (page - 1) * limit;
+    let filter = {};
+
+    // CATEGORY
+    if (category) filter[`category.${lang}`] = category;
+    if (subcategory) filter[`subcategory.${lang}`] = subcategory;
+
+    // PRICE
+    if (minPrice || maxPrice) {
+      filter.price = {};
+      if (minPrice) filter.price.$gte = Number(minPrice);
+      if (maxPrice) filter.price.$lte = Number(maxPrice);
+    }
+
+    // RATING
+    if (minRating || maxRating) {
+      filter.averageRating = {};
+      if (minRating) filter.averageRating.$gte = Number(minRating);
+      if (maxRating) filter.averageRating.$lte = Number(maxRating);
+    }
+
+    // SEARCH
+    if (search) {
+      const regex = new RegExp(search, "i");
+      filter.$or = [
+        { [`name.${lang}`]: regex },
+        { [`description.${lang}`]: regex },
+        { [`category.${lang}`]: regex },
+        { [`subcategory.${lang}`]: { $regex: regex } },
+        { slug: { $regex: regex } },
+      ];
+    }
+
+    let productsQuery = Product.find(filter);
+    // SORT
+    const sortOptions = {};
+    if (sort === "price-asc") {
+      sortOptions.price = 1;
+    } else if (sort === "price-desc") {
+      sortOptions.price = -1;
+    } else if (sort === "rating") {
+      sortOptions.averageRating = -1;
+    } else if (sort === "newest") {
+      sortOptions.createdAt = -1;
+    } else {
+      sortOptions[sort] = order === "asc" ? 1 : -1;
+    }
+    productsQuery = productsQuery.sort(sortOptions);
+
+    const products = await productsQuery
+      .skip(skip)
+      .limit(Number(limit));
+
+    const total = await Product.countDocuments(filter);
+
+  res.status(200).json({
+    products,
+    pagination: {
+      page: Number(page),
+      limit: Number(limit),
+      total,
+      totalPages: Math.ceil(total / limit),
+      hasMore: page * limit < total,
+    },
+  });
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// ======================
+
 // DELETE PRODUCT (Admin)
-// ======================
-
-
-
 export const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
@@ -263,10 +433,7 @@ export const deleteProduct = async (req, res) => {
 };
 
 
-
-// ======================
 // GET REVIEW
-// ======================
 export const getReviews = async (req, res) => {
   try {
     const { id } = req.params;
@@ -293,10 +460,7 @@ export const getReviews = async (req, res) => {
 };
 
 
-
-// ======================
 // ADD REVIEW
-// ======================
 export const addReview = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -330,9 +494,7 @@ export const addReview = async (req, res) => {
 };
 
 
-// ======================
 // GET RELATED PRODUCTS
-// ======================
 export const getRelatedProducts = async (req, res) => {
   try {
     const lang = req.lang;
