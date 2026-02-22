@@ -128,8 +128,9 @@ export const getProducts = async (req, res) => {
         { [`name.${lang}`]: regex },
         { [`description.${lang}`]: regex },
         { [`category.${lang}`]: regex },
-        { [`subcategory.${lang}`]: { $regex: regex } },
+        { [`subcategory.${lang}`]: regex },
         { slug: { $regex: regex } },
+        { [`tags.${lang}`]: { $in: [regex] } }, // <-- add this line
       ];
     }
 

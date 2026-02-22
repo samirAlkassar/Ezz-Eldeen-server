@@ -122,6 +122,8 @@ ProductSchema.index({
   "name.en": "text",
   "description.ar": "text",
   "description.en": "text",
+  "tags.ar": "text",
+  "tags.en": "text",
   "category.ar": "text",
   "category.en": "text",
 });
