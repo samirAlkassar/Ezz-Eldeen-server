@@ -509,27 +509,31 @@ export const getRelatedProducts = async (req, res) => {
 
     const filter = {
       _id: { $ne: product._id },
-      [`category.${lang}`]: product.category[lang],
     };
 
+    const orConditions = [];
+
+    if (product.category?.[lang]) {
+      orConditions.push({ [`category.${lang}`]: product.category[lang] });
+    }
+
     if (product.subcategory?.[lang]) {
-      filter[`subcategory.${lang}`] = product.subcategory[lang];
+      orConditions.push({ [`subcategory.${lang}`]: product.subcategory[lang] });
     }
 
     if (product.tags?.[lang]?.length > 0) {
-      filter.$or = [
-        { [`tags.${lang}`]: { $in: product.tags[lang] } },
-        { [`subcategory.${lang}`]: product.subcategory?.[lang] },
-      ];
+      orConditions.push({ [`tags.${lang}`]: { $in: product.tags[lang] } });
+    }
+
+    if (orConditions.length > 0) {
+      filter.$or = orConditions;
     }
 
     const relatedProducts = await Product.find(filter)
       .limit(limit);
 
     res.status(200).json({
-      products: relatedProducts.map(p =>
-        localizeProduct(p, lang)
-      ),
+      products: relatedProducts.map(p => localizeProduct(p, lang)),
     });
 
   } catch (error) {
