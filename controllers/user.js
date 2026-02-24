@@ -171,3 +171,60 @@ export const updateProfilePicture = async (req, res) => {
     res.status(500).json({ message: "Error updating profile picture" });
   }
 };
+
+
+//GET USERS + (filters and status)
+export const getUsers = async (req, res) => {
+  try {
+    const { search, role } = req.query;
+    const query = {};
+    if (search) query.$or = [{ firstName: { $regex: search, $options: "i" } }, { lastName: { $regex: search, $options: "i" } }];
+    if (role) query.role = role;
+    const sort = req.query.sort || "createdAt";
+    const limit = req.query.limit || 10;
+    const skip = req.query.skip || 0;
+    const numberOfUsers = await User.countDocuments(query); // count total users
+    const totalPages = Math.ceil(numberOfUsers / limit); // calculate total pages
+    const users = await User.find(query).select("-password").sort({ [sort]: -1 }).limit(limit).skip(skip);
+    const currentPage = skip / limit + 1;
+    const hasMore = currentPage < totalPages; // check if there are more pages
+    const numberOfnewUsersLastMonth = await User.countDocuments({ createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } });
+    res.json({ users, numberOfUsers, totalPages, currentPage, hasMore, numberOfnewUsersLastMonth });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to get users" });
+  }
+};
+
+
+//Edit user role
+export const editUserRole = async (req, res) => {
+  try {
+    const { userId, role } = req.body;
+    const user = await User.findByIdAndUpdate(userId, { role }, { new: true }).select("-password");
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to edit user role" });
+  }
+};
+
+// delete user 
+export const deleteUser = async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const user = await User.findByIdAndDelete(userId);
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to delete user" });
+  }
+};
+
+// add new User 
+export const addNewUser = async (req, res) => {
+  try {
+    const { firstName, lastName, email, password, role } = req.body;
+    const user = await User.create({ firstName, lastName, email, password, role });
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to add new user" });
+  }
+};
